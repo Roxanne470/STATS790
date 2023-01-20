@@ -1,0 +1,150 @@
+---
+title: |
+  | STATS 790
+  | Assignment 1
+author: |
+  | Roxanne Li
+  | Student id: 400181170
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+format: pdf
+fontsize: 11pt
+geometry: margin = 1in
+linestretch: 1.5
+bibliography: reference.bib
+nocite: '@*'
+---
+
+### Q1.
+
+I agree with the final remarks of Breiman's Two Culture of Statistical Modelling article that statisticians should work with the data and check theory against data. In many of our Statistics projects, one seemingly integral step when we got the data was to check for outliers and remove some of them, after which we would try to fit the statistical models we have learned in class to the data and examine the fit. After reading the article, I think what that conventional step has been doing could be seen as somewhat imposing the data models on the data. Removing the oddities inherent in the data of the real world or the nature doesn't solve the problem in general, we should instead aim to seek a solution (such as algorithmic) that is more stable and generalizable to all cases.
+
+### Q2.
+
+R code for producing **Figure2.3** in ESL:
+
+```{r message=FALSE, warning=FALSE, fig.width=8, fig.height=8}
+
+library(MASS)
+library(caret)
+set.seed(1)
+
+# generating 2-dim Gaussian mixture train data
+sigma <- matrix(c(4,3,3,4), 2, 2)
+
+orange_X <- mvrnorm(100, c(5,7.5), sigma)
+orange_y <- rep(1, 100)
+orange <- data.frame(orange_X, orange_y)
+colnames(orange) = c("X1", "X2", "y")
+
+blue_X <- mvrnorm(100, c(6.5,7), sigma)
+blue_y <- rep(0, 100)
+blue <- data.frame(blue_X, blue_y)
+colnames(blue) = c("X1", "X2", "y")
+
+data <- rbind(orange, blue)
+train <- data[sample(1:nrow(data)), ]
+rownames(train) <- NULL 
+
+# generating test data (the grid)
+x1 <- seq(0, 10, length.out=50)
+x2 <- seq(0, 10, length.out=50)
+test <- expand.grid(X1=x1, X2=x2)
+
+# KNN (k=15) prediction of test data
+test$y_pred <- knn3Train(train=train[,c(1,2)], test=test, cl=train$y, k=1)
+matrix_pred <- matrix(test$y_pred, length(x1), length(x2))
+
+# color the grid and draw the contour
+contour(x1, x2, matrix_pred, levels=0.5, labels="", xlab="", ylab="", 
+        main="1-Nearest Neighbor Classifier", lwd=2, axes=FALSE)
+points(train$X1, train$X2, pch="o", cex=1.5, col = ifelse(train$y==1, "#FDAE61", "#00BFFF"))
+points(test$X1, test$X2, pch=".", cex=2, col=ifelse(test$y==1, "#FDAE61", "#00BFFF"))
+box()
+
+```
+
+### Q6.
+
+Preparing training and test data:
+
+```{r message=FALSE, warning=FALSE}
+
+library(dplyr)
+library(class)
+library(reshape2)
+
+zip_train <- read.table("zip.train", quote="\"", comment.char="")
+zip_test <- read.table("zip.test", quote="\"", comment.char="")
+
+# prepare data
+train <- zip_train %>% filter(V1 == "2" | V1 == "3")
+test <- zip_test %>% filter(V1 == "2" | V1 == "3")
+
+```
+
+Using Linear Regression model for classification and examine the training and test error:
+
+```{r message=FALSE, warning=FALSE}
+
+# Linear Regression
+LR <- lm(V1~., data = train)
+train_pred <- round(predict(LR, train))
+test_pred <- round(predict(LR, test))
+train_error <- 1 - length(which(train_pred==train$V1)==TRUE)/length(train_pred)
+test_error <- 1 - length(which(test_pred==test$V1)==TRUE)/length(test_pred)
+sprintf("Using linear regression, train error is %f, test error is %f", train_error, test_error)
+
+```
+
+Using KNNs with different K values for classification and examine the training and test error:
+
+```{r message=FALSE, warning=FALSE}
+
+# KNN
+train_error_knn <- list()
+test_error_knn <- list()
+K <- list(1,3,5,7,15)
+for (k in K) {
+  train_pred <- knn(train[,-1], train[,-1], train$V1, k)
+  test_pred <- knn(train[,-1], test[,-1], train$V1, k)
+  train_error_knn <- append(train_error_knn, 1 - length(which(train_pred==train$V1)==TRUE)/length(train_pred))
+  test_error_knn <- append(test_error_knn, 1 - length(which(test_pred==test$V1)==TRUE)/length(test_pred))
+}
+
+error_knn = data.frame(unlist(K), unlist(train_error_knn), unlist(test_error_knn))
+colnames(error_knn) = c("K","train_error", "test_error")
+print(error_knn)
+
+```
+
+We can plot the training and test error to see their trends.
+
+```{r message=FALSE, warning=FALSE, fig.width=8, fig.height=5}
+
+plot(K, train_error_knn, type="o", col="blue", pch="o", ylim=c(0, 0.05), ylab="KNN error")
+points(K, test_error_knn, type="o", col="red", pch="o")
+lines(K, test_error_knn, col="red")
+legend(1,0.05,legend=c("train_error","test_error"), col=c("blue","red"),
+       pch=c("o","o"),lty=c(1,1), ncol=1)
+
+```
+
+We can see that the training error and test error of KNNs in general increase as K increases, and the test error is larger than the training error at all K's. When K=3, the training and test errors are close to those of the linear regression model we fitted before.
+
+### Q3, Q4, Q5
+
+The following contains the solutions to Q3, Q4, and Q5.
+
+![](Assignment-1.jpg)
+
+### Reference
+
+
+
+
+
+
+
+
+
+

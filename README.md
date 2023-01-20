@@ -1,1 +1,1 @@
-# STATS790
+# STATS790 Assignments repository
